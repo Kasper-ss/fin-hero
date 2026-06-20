@@ -2,9 +2,10 @@
  * Цели и годовой бюджет
  */
 
-import { formatMoney, formatDate, formatPercent, generateId, haptic } from '../utils/helpers.js';
-import { calcGoalTimeline, calcMonthlyForGoal, syncYearlyBudget } from '../utils/calculations.js';
+import { formatMoney, formatDate, formatPercent, generateId, haptic, escapeHtml } from '../utils/helpers.js';
+import { calcGoalTimeline, calcMonthlyForGoal, syncYearlyBudget, parseDeadlineDate } from '../utils/calculations.js';
 import { askText, askAmount, askConfirm } from '../utils/modal.js';
+import { showToast } from '../utils/ui.js';
 
 /** Рендер целей */
 export function renderGoals(container, data, onUpdate) {
@@ -16,6 +17,7 @@ export function renderGoals(container, data, onUpdate) {
   container.innerHTML = `
     <div class="goals fade-in">
       <h2 class="page-title">🎯 Цели</h2>
+      <p class="page-subtitle">Пополнение цели списывает сумму из конверта «Сбережения»</p>
 
       <button type="button" class="btn btn-gold btn-full" id="btn-add-goal">➕ Новая цель</button>
 
@@ -49,11 +51,16 @@ export function renderGoals(container, data, onUpdate) {
       const num = await askAmount('Пополнить цель');
       if (!num) return;
       const goal = data.goals.find(g => g.id === id);
-      if (goal) {
-        goal.current = Math.min(goal.target, goal.current + num);
-        haptic('success');
-        onUpdate(data, { silent: true });
+      if (!goal) return;
+      const savings = data.envelopes.savings;
+      if (!savings || num > savings.amount) {
+        showToast('Недостаточно средств в конверте «Сбережения»');
+        return;
       }
+      savings.amount -= num;
+      goal.current = Math.min(goal.target, goal.current + num);
+      haptic('success');
+      onUpdate(data, { silent: true });
     });
   });
 
@@ -96,7 +103,7 @@ function renderGoalCard(goal, annualReturn) {
       <div class="goal-header">
         <span class="goal-icon">${goal.icon}</span>
         <div>
-          <h4>${goal.name}</h4>
+          <h4>${escapeHtml(goal.name)}</h4>
           <p class="goal-deadline">до ${formatDate(goal.deadline, { month: 'long', year: 'numeric' })}</p>
         </div>
         <button type="button" class="btn-icon danger" data-goal-delete="${goal.id}">🗑️</button>
@@ -147,8 +154,13 @@ async function showAddGoalModal(data, onUpdate) {
   if (!name) return;
   const target = await askAmount('Целевая сумма (₽)');
   if (!target) return;
-  const deadline = await askText('Дедлайн (ГГГГ-ММ-ДД)', { defaultValue: '2026-12-31' });
-  const monthly = calcMonthlyForGoal(0, target, deadline || '2026-12-31', data.calculators.annualReturn);
+  const deadlineRaw = await askText('Дедлайн (ГГГГ-ММ-ДД)', { defaultValue: '2026-12-31' });
+  const deadline = parseDeadlineDate(deadlineRaw);
+  if (!deadline) {
+    showToast('Некорректная дата. Используйте формат ГГГГ-ММ-ДД');
+    return;
+  }
+  const monthly = calcMonthlyForGoal(0, target, deadline, data.calculators.annualReturn);
 
   data.goals.push({
     id: generateId('g'),
@@ -156,7 +168,7 @@ async function showAddGoalModal(data, onUpdate) {
     target,
     current: 0,
     monthly,
-    deadline: deadline || '2026-12-31',
+    deadline,
     icon: '🎯',
     priority: data.goals.length + 1,
   });

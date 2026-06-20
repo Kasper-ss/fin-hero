@@ -112,16 +112,22 @@ function parseWorkbook(workbook) {
   if (mainSheet) {
     const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[mainSheet], { header: 1 });
     sheet.forEach(row => {
-      const label = String(row[0] || '').toLowerCase();
+      const label = String(row[0] || '').toLowerCase().trim();
       const value = parseFloat(row[1]);
-      if (isNaN(value)) return;
-      if (label.includes('доход')) result.profile.monthlyIncome = value;
+      if (!label || isNaN(value)) return;
+      if (label.includes('доход') && !label.includes('год')) result.profile.monthlyIncome = value;
       if (label.includes('капитал') || label.includes('накоплен')) {
         result.profile.currentCapital = value;
         result.profile.startingCapital = value;
       }
-      if (label.includes('сбережен') || label.includes('норма')) result.profile.savingsRate = value;
+      if (label.includes('сбережен') || label.includes('норма')) {
+        result.profile.savingsRate = Math.min(100, Math.max(0, value));
+      }
     });
+  }
+
+  if (!result.profile.monthlyIncome || result.profile.monthlyIncome <= 0) {
+    throw new Error('В Excel не найден месячный доход (строка с «доход»)');
   }
 
   const dist = distributeEnvelopes(result.profile.monthlyIncome, result.budgetRule);

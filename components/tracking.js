@@ -3,7 +3,7 @@
  */
 
 import { formatMoney, formatDate, generateId, haptic } from '../utils/helpers.js';
-import { askAmount } from '../utils/modal.js';
+import { askAmount, askConfirm } from '../utils/modal.js';
 import { showToast } from '../utils/ui.js';
 import { EXPENSE_CATEGORIES } from '../data/defaultData.js';
 import { distributeEnvelopes, syncYearlyBudget } from '../utils/calculations.js';
@@ -163,7 +163,12 @@ function bindTrackingEvents(container, data, onUpdate) {
     onUpdate(data, { silent: true });
   });
 
-  container.querySelector('#btn-apply-budget')?.addEventListener('click', () => {
+  container.querySelector('#btn-apply-budget')?.addEventListener('click', async () => {
+    const ok = await askConfirm(
+      'Применить к карточкам?',
+      'Остатки всех конвертов станут равны бюджету. Текущие расходы месяца на карточках сбросятся.'
+    );
+    if (!ok) return;
     container.querySelectorAll('.budget-input').forEach(inp => {
       const key = inp.dataset.envKey;
       const newBudget = parseFloat(inp.value) || 0;
@@ -305,10 +310,13 @@ function addTransaction(data, onUpdate, tx) {
     data.profile.currentCapital += tx.amount;
     const envKey = tx.envelope || 'savings';
     if (data.envelopes[envKey]) {
-      data.envelopes[envKey].amount = Math.min(
-        data.envelopes[envKey].budget,
-        data.envelopes[envKey].amount + tx.amount
-      );
+      const env = data.envelopes[envKey];
+      const room = Math.max(0, env.budget - env.amount);
+      const toEnvelope = Math.min(tx.amount, room);
+      env.amount += toEnvelope;
+      if (toEnvelope < tx.amount) {
+        showToast(`В конверт «${env.name}» добавлено ${formatMoney(toEnvelope)} — лимит бюджета`);
+      }
     }
   }
   // Расходы: капитал не меняем — это месячный бюджет, не накопления

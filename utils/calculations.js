@@ -2,7 +2,17 @@
  * Финансовые расчёты (по методологии таблицы Артема Зуева)
  */
 
-import { localDateStr } from './helpers.js';
+import { localDateStr, localMonthKey } from './helpers.js';
+
+/** Сумма конвертов = доход (коррекция округления) */
+function balanceEnvelopesToIncome(dist, monthlyIncome) {
+  const sum = Object.values(dist).reduce((s, v) => s + v, 0);
+  const diff = monthlyIncome - sum;
+  if (diff !== 0 && dist.savings != null) {
+    dist.savings = Math.max(0, dist.savings + diff);
+  }
+  return dist;
+}
 
 /** Норма сбережений: сколько нужно откладывать */
 export function calcSavingsNorm(monthlyIncome, targetCapital, years, annualReturn = 12, currentCapital = 0) {
@@ -105,9 +115,10 @@ export function budget302050(monthlyIncome) {
 
 /** Распределение по конвертам */
 export function distributeEnvelopes(monthlyIncome, rule = '50/30/20') {
+  let dist;
   if (rule === '30/20/50') {
     const b = budget302050(monthlyIncome);
-    return {
+    dist = {
       fixed: Math.round(b.needs * 0.6),
       variable: Math.round(b.needs * 0.4),
       savings: b.savings,
@@ -115,16 +126,18 @@ export function distributeEnvelopes(monthlyIncome, rule = '50/30/20') {
       debts: Math.round(monthlyIncome * 0.05),
       wants: Math.round(monthlyIncome * 0.05),
     };
+  } else {
+    const b = budget502020(monthlyIncome);
+    dist = {
+      fixed: Math.round(b.needs * 0.65),
+      variable: Math.round(b.needs * 0.35),
+      savings: b.savings,
+      investments: Math.round(b.savings * 0.5),
+      debts: Math.round(b.savings * 0.25),
+      wants: b.wants,
+    };
   }
-  const b = budget502020(monthlyIncome);
-  return {
-    fixed: Math.round(b.needs * 0.65),
-    variable: Math.round(b.needs * 0.35),
-    savings: b.savings,
-    investments: Math.round(b.savings * 0.5),
-    debts: Math.round(b.savings * 0.25),
-    wants: b.wants,
-  };
+  return balanceEnvelopesToIncome(dist, monthlyIncome);
 }
 
 /** Снежный ком: сортировка долгов по остатку (меньший первый) */
@@ -196,15 +209,25 @@ export function todayDelta(transactions) {
     .reduce((sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount), 0);
 }
 
-/** Месячные расходы */
+/** Плановые месячные расходы по бюджету конвертов (без сбережений/инвестиций) */
+export function plannedMonthlyExpenses(envelopes) {
+  const spendKeys = ['fixed', 'variable', 'wants', 'debts'];
+  return spendKeys.reduce((s, k) => s + (envelopes[k]?.budget || 0), 0);
+}
+
+/** Месячные расходы: транзакции, факт по конвертам или план по бюджету */
 export function monthlyExpenses(transactions, envelopes) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const txExpenses = transactions
     .filter(t => t.type === 'expense' && t.date >= monthStart)
     .reduce((s, t) => s + t.amount, 0);
-  const envelopeSpent = Object.values(envelopes).reduce((s, e) => s + Math.max(0, e.budget - e.amount), 0);
-  return Math.max(txExpenses, envelopeSpent);
+  const envelopeSpent = Object.values(envelopes).reduce(
+    (s, e) => s + Math.max(0, (e.budget || 0) - (e.amount || 0)),
+    0
+  );
+  const planned = plannedMonthlyExpenses(envelopes);
+  return Math.max(txExpenses, envelopeSpent, planned);
 }
 
 /** Синхронизация годового бюджета из профиля и конвертов */
@@ -243,7 +266,7 @@ export function buildCapitalChartSeries(profile, capitalHistory = []) {
     }
   });
 
-  const nowLabel = formatMonthShort(new Date().toISOString().slice(0, 7));
+  const nowLabel = formatMonthShort(localMonthKey());
   if (values[values.length - 1] !== current) {
     labels.push(labels[labels.length - 1] === nowLabel ? 'Сейчас' : nowLabel);
     values.push(current);
@@ -271,21 +294,48 @@ export function migrateDemoCapitalHistory(gamification, profile) {
   const hasDemo = hist.some(h => demoKeys.includes(h.date));
   if (hasDemo) {
     gamification.capitalHistory = [{
-      date: new Date().toISOString().slice(0, 7),
+      date: localMonthKey(),
       value: profile.currentCapital,
     }];
   }
   if (!gamification.capitalHistory?.length) {
     gamification.capitalHistory = [{
-      date: new Date().toISOString().slice(0, 7),
+      date: localMonthKey(),
       value: profile.currentCapital,
     }];
   }
 }
 
+/** Валидация даты дедлайна (YYYY-MM-DD) */
+export function parseDeadlineDate(str) {
+  if (!str || !/^\d{4}-\d{2}-\d{2}$/.test(str.trim())) return null;
+  const d = new Date(str.trim() + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return null;
+  const [y, m, day] = str.trim().split('-').map(Number);
+  if (d.getFullYear() !== y || d.getMonth() + 1 !== m || d.getDate() !== day) return null;
+  return str.trim();
+}
+
+/** Доходность не ниже 0 для калькуляторов */
+export function clampAnnualReturn(rate) {
+  const n = Number(rate);
+  if (Number.isNaN(n)) return 12;
+  return Math.min(100, Math.max(0, n));
+}
+
+/** Убрать встроенные демо-цели и долги у существующих пользователей */
+export function migrateDemoGoalsDebts(data) {
+  const demoGoalIds = ['g1', 'g2', 'g3'];
+  const demoDebtIds = ['d1', 'd2'];
+  if (data.goals?.some(g => demoGoalIds.includes(g.id))) {
+    data.goals = data.goals.filter(g => !demoGoalIds.includes(g.id));
+  }
+  if (data.debts?.some(d => demoDebtIds.includes(d.id))) {
+    data.debts = data.debts.filter(d => !demoDebtIds.includes(d.id));
+  }
+}
 /** Годовых доходов накоплено */
 export function yearsOfIncomeSaved(capital, monthlyIncome) {
   if (monthlyIncome <= 0) return 0;
   return Math.round((capital / (monthlyIncome * 12)) * 10) / 10;
 }
-

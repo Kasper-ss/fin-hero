@@ -5,7 +5,7 @@
 import { formatMoney, formatPercent, haptic, debounce } from '../utils/helpers.js';
 import {
   calcSavingsNorm, simulateCapitalGrowth,
-  budget502020, budget302050, autoVsInvest,
+  budget502020, budget302050, autoVsInvest, clampAnnualReturn,
 } from '../utils/calculations.js';
 
 let growthChart = null;
@@ -95,7 +95,7 @@ function recalculateAll(container, data) {
 
   const target = parseFloat(container.querySelector('#calc-target')?.value) || 5000000;
   const years = parseFloat(container.querySelector('#calc-years')?.value) || 10;
-  const ret = parseFloat(container.querySelector('#calc-return')?.value) || 12;
+  const ret = clampAnnualReturn(container.querySelector('#calc-return')?.value || calculators.annualReturn);
   const savings = calcSavingsNorm(profile.monthlyIncome, target, years, ret, profile.currentCapital);
 
   const savingsEl = container.querySelector('#savings-result');
@@ -226,7 +226,7 @@ function bindCalcEvents(container, data, onUpdate) {
 }
 
 function saveCalcSettings(container, data) {
-  data.calculators.annualReturn = parseFloat(container.querySelector('#calc-return')?.value) || 12;
+  data.calculators.annualReturn = clampAnnualReturn(container.querySelector('#calc-return')?.value || 12);
   data.calculators.yearsToSimulate = parseFloat(container.querySelector('#calc-years')?.value) || 10;
   data.calculators.carPrice = parseFloat(container.querySelector('#car-price')?.value) || data.calculators.carPrice;
   data.calculators.carYears = parseFloat(container.querySelector('#car-years')?.value) || data.calculators.carYears;

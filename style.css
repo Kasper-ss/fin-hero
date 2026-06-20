@@ -989,6 +989,15 @@ body {
 
 .onboarding-actions .btn { flex: 1; }
 
+.welcome-step .welcome-hero {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.welcome-step strong { color: var(--gold); }
+
 /* Toast */
 .toast {
   position: fixed;

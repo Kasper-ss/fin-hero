@@ -21,7 +21,9 @@ export function renderDashboard(container, data, onAction) {
   const expenses = monthlyExpenses(transactions, envelopes);
   const freedom = financialFreedomProgress(profile.currentCapital, expenses);
   const yearsSaved = yearsOfIncomeSaved(profile.currentCapital, profile.monthlyIncome);
-  const activeGoal = goals.find(g => g.current < g.target);
+  const activeGoal = [...goals]
+    .filter(g => g.current < g.target)
+    .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))[0];
 
   container.innerHTML = `
     <div class="dashboard fade-in">

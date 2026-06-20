@@ -33,18 +33,11 @@ export const DEFAULT_DATA = {
   // Транзакции (пусто — пользователь добавляет сам)
   transactions: [],
 
-  // Цели
-  goals: [
-    { id: 'g1', name: 'Подушка безопасности', target: 480000, current: 160000, monthly: 16000, deadline: '2026-12-01', icon: '🛡️', priority: 1 },
-    { id: 'g2', name: 'Отпуск в Турции', target: 150000, current: 45000, monthly: 5000, deadline: '2026-08-01', icon: '✈️', priority: 2 },
-    { id: 'g3', name: 'Новый MacBook', target: 200000, current: 80000, monthly: 10000, deadline: '2026-10-01', icon: '💻', priority: 3 },
-  ],
+  // Цели (пусто — пользователь добавляет сам)
+  goals: [],
 
-  // Долги
-  debts: [
-    { id: 'd1', name: 'Ипотека', total: 3500000, remaining: 2800000, rate: 12.5, minPayment: 35000, strategy: 'snowball', icon: '🏡' },
-    { id: 'd2', name: 'Кредитная карта', total: 80000, remaining: 45000, rate: 24.9, minPayment: 5000, strategy: 'avalanche', icon: '💳' },
-  ],
+  // Долги (пусто)
+  debts: [],
 
   // Геймификация
   gamification: {
@@ -103,7 +96,7 @@ export const ACHIEVEMENTS_DEF = [
   { id: 'goal_complete', name: 'Мечтатель', desc: 'Достигни первую цель', icon: '🎯', xp: 200 },
   { id: 'level_10', name: 'Ветеран', desc: 'Достигни 10 уровень', icon: '⭐', xp: 0 },
   { id: 'level_50', name: 'Легенда', desc: 'Достигни 50 уровень', icon: '👑', xp: 0 },
-  { id: 'budget_hero', name: 'Бюджетный герой', desc: 'Уложись в бюджет всех конвертов', icon: '🛡️', xp: 150 },
+  { id: 'budget_hero', name: 'Бюджетный герой', desc: '3+ расходов и уложился в бюджет конвертов', icon: '🛡️', xp: 150 },
   { id: 'investor_test', name: 'Самопознание', desc: 'Пройди тест инвестора', icon: '🧠', xp: 75 },
   { id: 'import_data', name: 'Архивариус', desc: 'Импортируй данные', icon: '📂', xp: 50 },
 ];

@@ -5,7 +5,7 @@
 
 import { loadData, saveData } from './utils/storage.js';
 import { haptic, celebrate, today, localDateStr, localMonthKey, levelFromXp, getAvatarForLevel } from './utils/helpers.js';
-import { distributeEnvelopes, migrateDemoCapitalHistory, syncYearlyBudget } from './utils/calculations.js';
+import { distributeEnvelopes, migrateDemoCapitalHistory, syncYearlyBudget, migrateDemoGoalsDebts } from './utils/calculations.js';
 import { setAppSettings, showToast } from './utils/ui.js';
 import { AVATARS, ACHIEVEMENTS_DEF } from './data/defaultData.js';
 
@@ -27,7 +27,9 @@ const tg = window.Telegram?.WebApp;
 /** Инициализация */
 function init() {
   migrateDemoCapitalHistory(appData.gamification, appData.profile);
+  migrateDemoGoalsDebts(appData);
   syncYearlyBudget(appData);
+  appData.gamification.level = levelFromXp(appData.gamification.xp).level;
   setAppSettings(appData.settings);
   saveData(appData);
 
@@ -44,6 +46,8 @@ function init() {
 
   if (!appData.onboardingComplete) {
     showOnboarding();
+  } else if (tg) {
+    showWelcomeModal(() => render());
   } else {
     render();
   }
@@ -145,6 +149,7 @@ function handleUpdate(data, options = {}) {
       unlockAchievement(options.achievement);
     }
     checkAchievements();
+    appData.gamification.level = levelFromXp(appData.gamification.xp).level;
   }
 
   updateCapitalHistory();
@@ -237,8 +242,8 @@ function checkAchievements() {
   const expenseCount = transactions.filter(t => t.type === 'expense').length;
   const envelopes = Object.values(appData.envelopes);
   const hasSpending = envelopes.some(e => e.budget > 0 && e.amount < e.budget);
-  const noOverspend = envelopes.every(e => e.amount >= 0);
-  if (expenseCount >= 5 && hasSpending && noOverspend && !unlocked.includes('budget_hero')) {
+  const withinBudget = envelopes.every(e => e.amount >= 0 && e.amount <= e.budget);
+  if (expenseCount >= 3 && hasSpending && withinBudget && !unlocked.includes('budget_hero')) {
     unlockAchievement('budget_hero');
   }
 }
@@ -329,6 +334,41 @@ function showLevelUp(level) {
   });
 }
 
+/** Приветствие при открытии Mini App из Telegram */
+function showWelcomeModal(onContinue) {
+  if (sessionStorage.getItem('finHeroWelcomeShown')) {
+    onContinue?.();
+    return;
+  }
+
+  onboardingOpen = true;
+  document.getElementById('bottom-nav')?.classList.add('hidden');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'onboarding';
+  overlay.innerHTML = `
+    <div class="onboarding-step fade-in welcome-step">
+      <div class="welcome-hero">💰</div>
+      <h1>Добро пожаловать!</h1>
+      <p>В этом приложении вы <strong>научитесь управлять своими финансами</strong>: планировать бюджет по конвертам, отслеживать доходы и расходы, ставить цели и шаг за шагом двигаться к финансовой свободе.</p>
+      <p>Геймификация поможет закрепить полезные привычки — копите XP, открывайте достижения и прокачивайте финансовый уровень.</p>
+    </div>
+    <div class="onboarding-actions">
+      <button class="btn btn-gold" id="welcome-start">🚀 Начать</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#welcome-start').addEventListener('click', () => {
+    sessionStorage.setItem('finHeroWelcomeShown', '1');
+    onboardingOpen = false;
+    document.getElementById('bottom-nav')?.classList.remove('hidden');
+    overlay.remove();
+    haptic('medium');
+    onContinue?.();
+  });
+}
+
 /** Onboarding */
 function showOnboarding() {
   let step = 0;
@@ -345,7 +385,10 @@ function showOnboarding() {
     const steps = [
       {
         title: '⚔️ Финансовый Герой',
-        content: `<p>Добро пожаловать в мир геймифицированных финансов! Управляй деньгами как RPG-персонажем, копи XP и достигай финансовой свободы.</p>`,
+        content: `
+          <p>Добро пожаловать! В этом приложении вы <strong>научитесь управлять своими финансами</strong>: планировать бюджет, отслеживать расходы, ставить цели и двигаться к финансовой свободе.</p>
+          <p>Управляй деньгами как RPG-персонажем — копи XP, открывай достижения и прокачивай финансовый уровень.</p>
+        `,
         fields: '',
       },
       {
@@ -452,6 +495,8 @@ function showOnboarding() {
       appData.onboardingComplete = true;
       if (!importedDuringOnboarding) {
         appData.transactions = [];
+        appData.goals = [];
+        appData.debts = [];
         appData.gamification.xp = 0;
         appData.gamification.achievements = [];
         appData.gamification.streak = 1;

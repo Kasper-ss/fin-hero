@@ -190,13 +190,19 @@ export function animateNumber(element, from, to, duration = 800, formatter = (n)
 export async function shareProgress(data) {
   const text = `🏆 Финансовый Герой\n💰 Капитал: ${formatMoney(data.currentCapital)}\n⭐ Уровень: ${data.level}\n🔥 Streak: ${data.streak} дней\n\n#ФинансовыйГерой`;
   const tg = window.Telegram?.WebApp;
-  if (tg?.openTelegramLink) {
-    tg.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
-  } else if (navigator.share) {
-    await navigator.share({ text });
-  } else {
-    await navigator.clipboard.writeText(text);
-    return 'Скопировано в буфер обмена!';
+  try {
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
+    } else if (navigator.share) {
+      await navigator.share({ text });
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return 'Скопировано в буфер обмена!';
+    } else {
+      return 'Не удалось поделиться — скопируйте текст вручную';
+    }
+  } catch {
+    return 'Не удалось поделиться';
   }
   return null;
 }

@@ -2,8 +2,9 @@
  * Управление долгами: снежный ком / лавина
  */
 
-import { formatMoney, formatPercent, generateId, haptic } from '../utils/helpers.js';
+import { formatMoney, formatPercent, generateId, haptic, escapeHtml } from '../utils/helpers.js';
 import { askAmount, askConfirm, askText } from '../utils/modal.js';
+import { showToast } from '../utils/ui.js';
 import { snowballOrder, avalancheOrder, debtPayoffPlan, calcDebtPayment } from '../utils/calculations.js';
 
 /** Рендер долгов */
@@ -109,7 +110,7 @@ function renderDebtList(debts) {
         <div class="debt-header">
           <span class="debt-icon">${debt.icon}</span>
           <div>
-            <h4>${debt.name} ${priority}</h4>
+            <h4>${escapeHtml(debt.name)} ${priority}</h4>
             <p class="debt-rate">Ставка: ${formatPercent(debt.rate, 1)}</p>
           </div>
         </div>
@@ -143,8 +144,12 @@ function bindDebtEvents(container, data, onUpdate) {
       if (!debt) return;
       const amount = await askAmount(`Платёж по «${debt.name}»`, { defaultValue: debt.minPayment });
       if (!amount) return;
+      if (amount > data.profile.currentCapital) {
+        showToast('Недостаточно капитала для платежа');
+        return;
+      }
       debt.remaining = Math.max(0, debt.remaining - amount);
-      data.profile.currentCapital -= amount;
+      data.profile.currentCapital = Math.max(0, data.profile.currentCapital - amount);
       data.envelopes.debts.amount = Math.max(0, data.envelopes.debts.amount - amount);
       haptic('success');
       onUpdate(data, { silent: true });
