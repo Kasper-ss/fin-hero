@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="description" content="Финансовый Герой — геймифицированное управление личными финансами">
+  <title>Финансовый Герой</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Tailwind (утилиты через CDN, основные стили в style.css) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Стили -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div id="app">
+    <main id="main-content">
+      <!-- Контент рендерится через app.js -->
+      <div class="fade-in" style="padding:40px;text-align:center">
+        <div class="pulse" style="font-size:4rem;margin-bottom:16px">⚔️</div>
+        <p style="color:#94a3b8">Загрузка...</p>
+      </div>
+    </main>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-item active" data-tab="dashboard">
+        <span class="nav-icon">🏠</span>
+        <span>Главная</span>
+      </button>
+      <button class="nav-item" data-tab="tracking">
+        <span class="nav-icon">💼</span>
+        <span>Конверты</span>
+      </button>
+      <button class="nav-item" data-tab="calculators">
+        <span class="nav-icon">🧮</span>
+        <span>Расчёты</span>
+      </button>
+      <button class="nav-item" data-tab="goals">
+        <span class="nav-icon">🎯</span>
+        <span>Цели</span>
+      </button>
+      <button class="nav-item" data-tab="debts">
+        <span class="nav-icon">💳</span>
+        <span>Долги</span>
+      </button>
+      <button class="nav-item" data-tab="achievements">
+        <span class="nav-icon">🏆</span>
+        <span>Профиль</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
