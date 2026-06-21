@@ -79,6 +79,13 @@ def setup_menu_button():
     })
 
 
+def send_message(chat_id, text, parse_mode=None):
+    payload = {"chat_id": chat_id, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    return api("sendMessage", payload)
+
+
 def send_welcome(chat_id):
     """Приветственное сообщение + inline-кнопка открытия приложения."""
     return api("sendMessage", {
@@ -92,6 +99,11 @@ def send_welcome(chat_id):
             }]],
         },
     })
+
+
+def send_appss_verify(chat_id):
+    """Верификация для каталога Appss."""
+    return send_message(chat_id, "appss_6bf0ba")
 
 
 def poll_updates(offset=0):
@@ -136,8 +148,12 @@ def main():
                 if not message:
                     continue
                 text = message.get("text", "")
-                if text.startswith("/start"):
-                    send_welcome(message["chat"]["id"])
+                chat_id = message["chat"]["id"]
+                cmd = text.split()[0].split("@")[0] if text else ""
+                if cmd == "/start":
+                    send_welcome(chat_id)
+                elif cmd == "/appss_verify":
+                    send_appss_verify(chat_id)
         except urllib.error.HTTPError as err:
             print(f"HTTP ошибка: {err.code} {err.reason}")
             time.sleep(5)

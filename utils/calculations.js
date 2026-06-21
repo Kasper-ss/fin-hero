@@ -247,44 +247,53 @@ export function syncYearlyBudget(data) {
   return data.yearlyBudget[year];
 }
 
-/** Серия данных для графика капитала — от старта к текущему */
-export function buildCapitalChartSeries(profile, capitalHistory = []) {
+/** Подпись дня на графике: «10 июн» */
+export function formatChartDayLabel(dateStr) {
+  if (!dateStr || dateStr === 'start') return dateStr;
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  if (d && months[m - 1]) return `${d} ${months[m - 1]}`;
+  if (months[m - 1]) return `${months[m - 1]} ${String(y).slice(2)}`;
+  return dateStr;
+}
+
+/** Серия данных для графика капитала — по датам операций с доходом */
+export function buildCapitalChartSeries(profile, transactions = []) {
   const startVal = profile.startingCapital ?? profile.currentCapital;
   const current = profile.currentCapital;
   const labels = ['Старт'];
   const values = [startVal];
 
-  const sorted = [...capitalHistory].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  let capital = startVal;
+  const byDay = new Map();
 
-  sorted.forEach((h) => {
-    const label = formatMonthShort(h.date);
+  [...transactions]
+    .filter(t => t.type === 'income')
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .forEach((tx) => {
+      capital += tx.amount;
+      byDay.set(localDateStr(new Date(tx.date)), capital);
+    });
+
+  for (const [day, val] of [...byDay.entries()].sort()) {
+    const lbl = formatChartDayLabel(day);
+    const lastLbl = labels[labels.length - 1];
     const lastVal = values[values.length - 1];
-    const lastLabel = labels[labels.length - 1];
-    if (h.value !== lastVal || label !== lastLabel) {
-      labels.push(label);
-      values.push(h.value);
+    if (lbl !== lastLbl || val !== lastVal) {
+      labels.push(lbl);
+      values.push(val);
     }
-  });
-
-  const nowLabel = formatMonthShort(localMonthKey());
-  if (values[values.length - 1] !== current) {
-    labels.push(labels[labels.length - 1] === nowLabel ? 'Сейчас' : nowLabel);
-    values.push(current);
   }
 
-  if (labels.length === 1) {
+  if (values[values.length - 1] !== current) {
+    labels.push('Сейчас');
+    values.push(current);
+  } else if (labels.length === 1) {
     labels.push('Сейчас');
     values.push(current);
   }
 
   return { labels, values };
-}
-
-function formatMonthShort(dateStr) {
-  if (dateStr === 'Старт') return dateStr;
-  const [y, m] = String(dateStr).split('-');
-  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-  return months[parseInt(m, 10) - 1] ? `${months[parseInt(m, 10) - 1]} ${y?.slice(2) || ''}` : dateStr;
 }
 
 /** Миграция: убрать демо-историю капитала */
@@ -294,13 +303,13 @@ export function migrateDemoCapitalHistory(gamification, profile) {
   const hasDemo = hist.some(h => demoKeys.includes(h.date));
   if (hasDemo) {
     gamification.capitalHistory = [{
-      date: localMonthKey(),
+      date: localDateStr(),
       value: profile.currentCapital,
     }];
   }
   if (!gamification.capitalHistory?.length) {
     gamification.capitalHistory = [{
-      date: localMonthKey(),
+      date: localDateStr(),
       value: profile.currentCapital,
     }];
   }

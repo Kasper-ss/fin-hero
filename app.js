@@ -270,17 +270,17 @@ function updateStreak() {
   saveData(appData);
 }
 
-/** История капитала */
+/** История капитала — снимок на дату операции */
 function updateCapitalHistory() {
   const history = appData.gamification.capitalHistory;
-  const monthKey = localMonthKey();
-  const existing = history.find(h => h.date === monthKey);
+  const dayKey = localDateStr();
+  const existing = history.find(h => h.date === dayKey);
 
   if (existing) {
     existing.value = appData.profile.currentCapital;
   } else {
-    history.push({ date: monthKey, value: appData.profile.currentCapital });
-    if (history.length > 12) history.shift();
+    history.push({ date: dayKey, value: appData.profile.currentCapital });
+    if (history.length > 60) history.shift();
   }
 }
 
@@ -503,7 +503,7 @@ function showOnboarding() {
       }
       appData.gamification.lastActiveDate = today();
       appData.gamification.capitalHistory = [{
-        date: localMonthKey(),
+        date: localDateStr(),
         value: appData.profile.currentCapital,
       }];
       syncYearlyBudget(appData);
