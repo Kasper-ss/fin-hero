@@ -38,11 +38,20 @@ WELCOME_TEXT = (
 )
 
 
+def setup_commands():
+    """Команды бота в меню Telegram."""
+    return api("setMyCommands", {
+        "commands": [
+            {"command": "start", "description": "Приветствие и запуск приложения"},
+            {"command": "appss_verify", "description": "Верификация Appss"},
+        ],
+    })
+
+
 def get_ssl_context():
     """SSL-контекст: certifi → системные сертификаты → отключение проверки."""
     skip_verify = os.environ.get("SSL_VERIFY", "1").lower() in ("0", "false", "no")
     if skip_verify:
-        print("⚠️  SSL_VERIFY=0 — проверка сертификатов отключена")
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -129,9 +138,14 @@ def main():
         return
 
     try:
+        if os.environ.get("SSL_VERIFY", "1").lower() in ("0", "false", "no"):
+            print("⚠️  SSL_VERIFY=0 — проверка сертификатов отключена")
         setup_menu_button()
+        setup_commands()
+        me = api("getMe")
+        bot_name = me.get("result", {}).get("username", "?")
         print(f"Кнопка «Запустить» установлена. URL: {WEBAPP_URL}")
-        print("Бот запущен. Отправьте /start в чат с ботом.")
+        print(f"Бот @{bot_name} запущен. Команды: /start, /appss_verify")
     except urllib.error.URLError as err:
         if "CERTIFICATE_VERIFY_FAILED" in str(err):
             print_ssl_help()
