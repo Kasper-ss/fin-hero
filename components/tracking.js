@@ -318,8 +318,9 @@ function addTransaction(data, onUpdate, tx) {
         showToast(`В конверт «${env.name}» добавлено ${formatMoney(toEnvelope)} — лимит бюджета`);
       }
     }
+  } else if (tx.type === 'expense') {
+    data.profile.currentCapital = Math.max(0, data.profile.currentCapital - tx.amount);
   }
-  // Расходы: капитал не меняем — это месячный бюджет, не накопления
   haptic('success');
   onUpdate(data, { xpEvent: 'transaction' });
 }

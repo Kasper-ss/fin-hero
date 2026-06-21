@@ -80,7 +80,7 @@ export function renderDashboard(container, data, onAction) {
       <!-- График -->
       <section class="chart-card glass">
         <h3 class="section-title">📊 Рост капитала</h3>
-        <p class="chart-hint">Точки на графике — даты записи дохода; «Сейчас» — текущий капитал</p>
+        <p class="chart-hint">Точки на графике — даты доходов и расходов; «Сейчас» — текущий капитал</p>
         <div class="chart-wrap chart-wrap-fixed">
           <canvas id="capital-chart"></canvas>
         </div>

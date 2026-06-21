@@ -257,7 +257,7 @@ export function formatChartDayLabel(dateStr) {
   return dateStr;
 }
 
-/** Серия данных для графика капитала — по датам операций с доходом */
+/** Серия данных для графика капитала — по датам доходов и расходов */
 export function buildCapitalChartSeries(profile, transactions = []) {
   const startVal = profile.startingCapital ?? profile.currentCapital;
   const current = profile.currentCapital;
@@ -265,25 +265,22 @@ export function buildCapitalChartSeries(profile, transactions = []) {
   const values = [startVal];
 
   let capital = startVal;
-  const byDay = new Map();
 
   [...transactions]
-    .filter(t => t.type === 'income')
+    .filter(t => t.type === 'income' || t.type === 'expense')
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .forEach((tx) => {
-      capital += tx.amount;
-      byDay.set(localDateStr(new Date(tx.date)), capital);
+      capital += tx.type === 'income' ? tx.amount : -tx.amount;
+      const lbl = formatChartDayLabel(localDateStr(new Date(tx.date)));
+      const lastLbl = labels[labels.length - 1];
+      const lastVal = values[values.length - 1];
+      if (lbl !== lastLbl || capital !== lastVal) {
+        labels.push(lbl);
+        values.push(Math.max(0, capital));
+      } else {
+        values[values.length - 1] = Math.max(0, capital);
+      }
     });
-
-  for (const [day, val] of [...byDay.entries()].sort()) {
-    const lbl = formatChartDayLabel(day);
-    const lastLbl = labels[labels.length - 1];
-    const lastVal = values[values.length - 1];
-    if (lbl !== lastLbl || val !== lastVal) {
-      labels.push(lbl);
-      values.push(val);
-    }
-  }
 
   if (values[values.length - 1] !== current) {
     labels.push('Сейчас');
